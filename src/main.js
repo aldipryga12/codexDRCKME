@@ -74,9 +74,9 @@ $('go').addEventListener('click',async()=>{
  if(files.some(f=>f.size>150*1048576)){update(0,'File terlalu besar','Batas 150 MB per file. Di iPhone disarankan di bawah 30 MB.');return;}
  cancelled=false;lock(true);
  for(const url of urls)URL.revokeObjectURL(url);urls=[];$('downloads').replaceChildren();
- const chosenMode=mode,chosenQuality=Number($('quality').value);
+ const chosenMode=mode,chosenQuality=Number($('quality').value),fastMode=chosenMode==='hd'&&$('fastMode').checked;
  if(chosenMode==='fps'&&!confirm('120 FPS interpolasi gerakan sangat berat dan mungkin tidak didukung oleh FFmpeg browser. Uji video 2–3 detik pada kualitas Ringan dahulu. Lanjutkan?')){lock(false);return;}
- if(chosenQuality>=2560&&!confirm('Resolusi tinggi di iPhone dapat menyebabkan browser kehabisan memori atau menutup halaman. Lanjutkan?')){lock(false);return;}
+ if(chosenQuality>=2560&&!fastMode&&!confirm('Resolusi tinggi di iPhone dapat menyebabkan browser kehabisan memori atau menutup halaman. Lanjutkan?')){lock(false);return;}
  try{
   const ff=await loadEngine();
   for(let i=0;i<files.length;i++){
@@ -87,7 +87,16 @@ $('go').addEventListener('click',async()=>{
     await ff.writeFile(input,await fetchFile(file));
     if(cancelled)break;
     update(0,'Memproses video',(i+1)+'/'+files.length+': '+file.name);
-    const code=await ff.exec(argsFor(chosenMode,input,output,chosenQuality),-1);
+    let code;
+    if(fastMode){
+     update(0,'Mode cepat','Mencoba mengemas ulang video tanpa encoding. Resolusi dan FPS asli dipertahankan.');
+     code=await ff.exec(['-i',input,'-map','0:v:0','-map','0:a?','-c','copy','-movflags','+faststart',output],-1);
+     if(code!==0){
+      try{await ff.deleteFile(output)}catch{}
+      update(0,'Fallback encode','Codec tidak cocok untuk remux. Menggunakan encoding standar yang lebih lambat.');
+      code=await ff.exec(argsFor(chosenMode,input,output,chosenQuality),-1);
+     }
+    }else code=await ff.exec(argsFor(chosenMode,input,output,chosenQuality),-1);
     if(cancelled)break;
     if(code!==0)throw new Error(chosenMode==='fps'?'Interpolasi 120 FPS gagal (kode '+code+'). Mesin FFmpeg browser mungkin tidak mendukung minterpolate atau memori tidak cukup. Coba video 2–3 detik kualitas Ringan.':'FFmpeg gagal (kode '+code+'). Coba video lebih pendek atau mode Repack HD.');
     update(99,'Menyiapkan download','Membaca hasil video.');
