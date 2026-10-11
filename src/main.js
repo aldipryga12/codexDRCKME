@@ -8,7 +8,7 @@ function update(percent,stage,message){
  $('progress').value=value;$('percent').textContent=value+'%';$('stage').textContent=stage;
  if(message!==undefined)$('status').textContent=message;
 }
-function lock(busy){active=busy;$('go').disabled=busy;$('cancel').disabled=!busy;$('files').disabled=busy;document.querySelectorAll('.mode').forEach(b=>b.disabled=busy);}
+function lock(busy){$('quality').disabled=busy;active=busy;$('go').disabled=busy;$('cancel').disabled=!busy;$('files').disabled=busy;document.querySelectorAll('.mode').forEach(b=>b.disabled=busy);}
 document.querySelectorAll('.mode').forEach(b=>b.addEventListener('click',()=>{
  document.querySelectorAll('.mode').forEach(x=>x.classList.remove('active'));b.classList.add('active');mode=b.dataset.mode;
 }));
@@ -31,13 +31,11 @@ async function loadEngine(){
   engine=ff;return ff;
  }catch(e){ff.terminate();throw new Error('Gagal memuat FFmpeg. Periksa koneksi internet dan dukungan browser. '+(e?.message||String(e)||'Kesalahan tidak diketahui'));}
 }
-function argsFor(currentMode,input,output){
+function argsFor(currentMode,input,output,quality){
  const common=['-threads','1','-i',input];
- const vf={
-  hd:"scale=w='min(640,iw)':h=-2:flags=fast_bilinear,format=yuv420p",
-  fps:"scale=w='min(320,iw)':h=-2:flags=fast_bilinear,fps=120,format=yuv420p",
-  hdr:"scale=w='min(640,iw)':h=-2:flags=fast_bilinear,eq=contrast=1.08:saturation=1.15,format=yuv420p"
- };
+ const cap=quality===3840?3840:quality;
+ const scale="scale=w='min("+cap+",iw)':h=-2:flags=fast_bilinear";
+ const vf={hd:scale+',format=yuv420p',fps:scale+',fps=120,format=yuv420p',hdr:scale+',eq=contrast=1.08:saturation=1.15,format=yuv420p'};
  return [...common,'-vf',vf[currentMode],'-c:v','libx264','-preset','ultrafast','-crf','29','-threads','1','-c:a','aac','-b:a','128k','-movflags','+faststart',output];
 }
 $('cancel').addEventListener('click',()=>{
@@ -51,7 +49,8 @@ $('go').addEventListener('click',async()=>{
  if(files.some(f=>f.size>150*1048576)){update(0,'File terlalu besar','Batas 150 MB per file. Di iPhone disarankan di bawah 30 MB.');return;}
  cancelled=false;lock(true);
  for(const url of urls)URL.revokeObjectURL(url);urls=[];$('downloads').replaceChildren();
- const chosenMode=mode;
+ const chosenMode=mode,chosenQuality=Number($('quality').value);
+ if(chosenQuality>=2560&&!confirm('Resolusi tinggi di iPhone dapat menyebabkan browser kehabisan memori atau menutup halaman. Lanjutkan?')){lock(false);return;}
  try{
   const ff=await loadEngine();
   for(let i=0;i<files.length;i++){
@@ -62,14 +61,14 @@ $('go').addEventListener('click',async()=>{
     await ff.writeFile(input,await fetchFile(file));
     if(cancelled)break;
     update(0,'Memproses video',(i+1)+'/'+files.length+': '+file.name);
-    const code=await ff.exec(argsFor(chosenMode,input,output),-1);
+    const code=await ff.exec(argsFor(chosenMode,input,output,chosenQuality),-1);
     if(cancelled)break;
     if(code!==0)throw new Error('FFmpeg gagal (kode '+code+'). Coba video lebih pendek atau mode Repack HD.');
     update(99,'Menyiapkan download','Membaca hasil video.');
     const data=await ff.readFile(output);
     const blob=new Blob([data],{type:'video/mp4'});
     const url=URL.createObjectURL(blob);urls.push(url);
-    const a=document.createElement('a');a.href=url;a.download=file.name.replace(/\.[^.]+$/,'')+'-'+chosenMode+'.mp4';a.textContent='⬇ Download '+a.download;
+    const a=document.createElement('a');a.href=url;a.download=file.name.replace(/\.[^.]+$/,'')+'-'+chosenMode+'-'+chosenQuality+'.mp4';a.textContent='⬇ Download '+a.download;
     $('downloads').appendChild(a);
     update(100,'Video selesai','Klik tombol Download di bawah untuk menyimpan hasil. ('+(i+1)+'/'+files.length+')');
    }finally{
