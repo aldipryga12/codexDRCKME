@@ -34,9 +34,9 @@ async function loadEngine(){
 function argsFor(currentMode,input,output,quality){
  const common=['-threads','1','-i',input];
  const cap=quality===3840?3840:quality;
- const scale="scale=w='min("+cap+",iw)':h=-2:flags=fast_bilinear";
- const vf={hd:scale+',format=yuv420p',fps:scale+',fps=120,format=yuv420p',hdr:scale+',eq=contrast=1.08:saturation=1.15,format=yuv420p'};
- return [...common,'-vf',vf[currentMode],'-c:v','libx264','-preset','ultrafast','-crf','29','-threads','1','-c:a','aac','-b:a','128k','-movflags','+faststart',output];
+ const scale="scale=w='min("+cap+",iw)':h=-2:flags=bicubic";
+ const vf={hd:scale+',format=yuv420p',fps:scale+',fps=120,format=yuv420p',hdr:scale+',eq=contrast=1.06:brightness=0.008:saturation=1.12:gamma=1.02,format=yuv420p'};
+ return [...common,'-vf',vf[currentMode],'-c:v','libx264','-preset','ultrafast','-crf',quality<=640?'23':'21','-threads','1','-c:a','aac','-b:a','160k','-movflags','+faststart',output];
 }
 $('cancel').addEventListener('click',()=>{
  if(!active)return;cancelled=true;if(engine){engine.terminate();engine=null;}
