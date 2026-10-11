@@ -4,10 +4,11 @@
 <header><div class="logo">CODEX <span>REPACK</span></div><div class="tag">BROWSER STUDIO · TANPA LOGIN</div></header>
 <section class="card"><h1>Proses Video <span>Langsung</span></h1><p class="lead">Proses video di perangkatmu tanpa upload ke server. Pilih mode dan unduh hasil MP4.</p>
 <div class="modes" role="group" aria-label="Mode pemrosesan">
-<button class="mode active" data-mode="hd" type="button"><strong>✦ Repack HD</strong><small>H.264 · resolusi hingga 720p</small></button>
+<button class="mode active" data-mode="hd" type="button"><strong>✦ Repack HD</strong><small>H.264 · pilih resolusi hingga 4K UHD</small></button>
 <button class="mode" data-mode="fps" type="button"><strong>↗ 120 FPS</strong><small>Duplikasi frame, bukan interpolasi</small></button>
 <button class="mode" data-mode="hdr" type="button"><strong>◈ HDR Look</strong><small>Penyesuaian warna, bukan HDR10</small></button>
 </div>
+<label for="quality" class="quality-label">Kualitas output</label><select id="quality"><option value="640">Ringan · 640p maksimum (iPhone)</option><option value="1280">HD · 720p</option><option value="1920">Full HD · 1080p</option><option value="2560">QHD · 1440p</option><option value="3840">4K UHD · Eksperimen (berat)</option></select><p id="qualityNote" class="note">4K memerlukan memori sangat besar. Resolusi sumber rendah tidak menjadi detail 4K asli.</p>
 <label class="drop" for="files"><span class="upload-icon">↑</span><strong>Pilih video</strong><small>MP4, MOV, MKV · beberapa file sekaligus</small><input id="files" type="file" accept="video/*,.mkv" multiple></label>
 <div id="fileList" class="file-list">Belum ada video dipilih.</div>
 <div class="actions"><button id="go" class="primary" type="button">Mulai Proses Video</button><button id="cancel" class="secondary" type="button" disabled>Batalkan</button></div>
