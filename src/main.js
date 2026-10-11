@@ -16,8 +16,31 @@ document.querySelectorAll('.mode').forEach(b=>b.addEventListener('click',()=>{
 }));
 $('files').addEventListener('change',()=>{
  const files=[...$('files').files];
- $('fileList').textContent=files.length?files.map(f=>f.name+' ('+(f.size/1048576).toFixed(1)+' MB)').join(' · '):'Belum ada video dipilih.';
+ $('fileList').textContent=files.length?files.map(f=>f.name+' ('+(f.size/1048576).toFixed(1)+' MB)').join(' · '):'Belum ada video dipilih.';\n $('videoInfo').hidden=!files.length;if(files.length)inspectVideo(files[0],$('videoInfo'));
 });
+function inspectVideo(file,target){
+ if(!file){target.textContent='Belum ada video dipilih.';return;}
+ const objectURL=URL.createObjectURL(file);
+ const video=document.createElement('video');video.preload='metadata';video.muted=true;
+ let finished=false;
+ const finish=()=>{if(finished)return;finished=true;URL.revokeObjectURL(objectURL);video.removeAttribute('src');video.load();};
+ video.onloadedmetadata=()=>{
+  const duration=Number.isFinite(video.duration)?video.duration.toFixed(2)+' detik':'Tidak diketahui';
+  const resolution=video.videoWidth&&video.videoHeight?video.videoWidth+' × '+video.videoHeight:'Tidak diketahui';
+  const portrait=video.videoHeight>video.videoWidth;
+  const ext=(file.name.split('.').pop()||'').toUpperCase();
+  const ratio=portrait?'Vertikal':video.videoWidth>video.videoHeight?'Horizontal':'Persegi / tidak diketahui';
+  target.replaceChildren();
+  const title=document.createElement('strong');title.textContent='📋 INFORMASI VIDEO';target.appendChild(title);
+  for(const [name,value] of [['Nama',file.name],['Format',ext||'Tidak diketahui'],['Ukuran',(file.size/1048576).toFixed(2)+' MB'],['Resolusi',resolution],['Orientasi',ratio],['Durasi',duration]]){
+   const row=document.createElement('div');row.className='inspect-row';const key=document.createElement('span');key.textContent=name;const val=document.createElement('b');val.textContent=value;row.append(key,val);target.appendChild(row);
+  }
+  const note=document.createElement('p');note.textContent='Catatan: pemeriksaan browser tidak dapat memastikan FPS, codec, bitrate, atau apakah platform akan mempertahankan kualitas saat upload.';target.appendChild(note);finish();
+ };
+ video.onerror=()=>{target.textContent='Metadata video tidak dapat dibaca browser ini. Format mungkin tetap dapat diproses FFmpeg.';finish();};
+ video.src=objectURL;
+}
+$('checkerFile').addEventListener('change',()=>inspectVideo($('checkerFile').files[0],$('checkerResult')));
 async function loadEngine(){
  if(engine)return engine;
  update(0,'Memuat mesin video','Mengunduh FFmpeg WebAssembly. Pertama kali dapat memerlukan waktu.');
