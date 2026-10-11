@@ -14,7 +14,7 @@ if(!req.file)return res.status(400).json({error:'Pilih video terlebih dahulu'});
 const mode=String(req.body.mode||'hd');
 const filters={
 hd:['-vf','scale=ceil(iw/2)*2:ceil(ih/2)*2,format=yuv420p','-preset','medium','-crf','18'],
-fps:['-vf','scale='min(854,iw)':-2,minterpolate=fps=120:mi_mode=blend,format=yuv420p','-preset','fast','-crf','20'],
+fps:['-vf',"scale='min(854,iw)':-2,minterpolate=fps=120:mi_mode=blend,format=yuv420p",'-preset','fast','-crf','20'],
 hdr:['-vf','eq=contrast=1.08:saturation=1.15,scale=ceil(iw/2)*2:ceil(ih/2)*2,format=yuv420p','-preset','medium','-crf','18']
 };
 const input=req.file.path,output=input+'.mp4';
