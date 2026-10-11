@@ -1,5 +1,5 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { toBlobURL, fetchFile } from '@ffmpeg/util';
+import { fetchFile } from '@ffmpeg/util';
 import './style.css';
 const $=id=>document.getElementById(id);
 let mode='hd',engine=null,active=false,cancelled=false,urls=[];
@@ -20,16 +20,16 @@ async function loadEngine(){
  if(engine)return engine;
  update(0,'Memuat mesin video','Mengunduh FFmpeg WebAssembly. Pertama kali dapat memerlukan waktu.');
  const ff=new FFmpeg();
- const coreBase='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
+ const coreBase='/ffmpeg';
  ff.on('progress',({progress})=>{
   if(!active||!Number.isFinite(progress))return;
   const pct=Math.max(0,Math.min(99,Math.round(progress*100)));
   update(pct,'Memproses video','FFmpeg sedang mengonversi video di perangkat ini.');
  });
  try{
-  await ff.load({coreURL:await toBlobURL(coreBase+'/ffmpeg-core.js','text/javascript'),wasmURL:await toBlobURL(coreBase+'/ffmpeg-core.wasm','application/wasm')});
+  await ff.load({coreURL:coreBase+'/ffmpeg-core.js',wasmURL:coreBase+'/ffmpeg-core.wasm'});
   engine=ff;return ff;
- }catch(e){ff.terminate();throw new Error('Gagal memuat FFmpeg. Periksa koneksi internet dan dukungan browser. '+e.message);}
+ }catch(e){ff.terminate();throw new Error('Gagal memuat FFmpeg. Periksa koneksi internet dan dukungan browser. '+(e?.message||String(e)||'Kesalahan tidak diketahui'));}
 }
 function argsFor(currentMode,input,output){
  const common=['-i',input,'-threads','1'];
