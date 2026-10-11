@@ -8,15 +8,16 @@ function update(percent,stage,message){
  $('progress').value=value;$('percent').textContent=value+'%';$('stage').textContent=stage;
  if(message!==undefined)$('status').textContent=message;
 }
-function lock(busy){$('quality').disabled=busy;active=busy;$('go').disabled=busy;$('cancel').disabled=!busy;$('files').disabled=busy;document.querySelectorAll('.mode').forEach(b=>b.disabled=busy);}
+function lock(busy){$('fastMode').disabled=busy;$('quality').disabled=busy;active=busy;$('go').disabled=busy;$('cancel').disabled=!busy;$('files').disabled=busy;document.querySelectorAll('.mode').forEach(b=>b.disabled=busy);}
 document.querySelectorAll('.mode').forEach(b=>b.addEventListener('click',()=>{
  document.querySelectorAll('.mode').forEach(x=>x.classList.remove('active'));b.classList.add('active');mode=b.dataset.mode;
- const details={hd:['Codex Repack HD','Encode video H.264 MP4 langsung di perangkat. Pilih kualitas output sesuai kemampuan perangkatmu.'],fps:['Codex Motion 120 FPS','Interpolasi gerakan eksperimental untuk membuat frame perantara. Sangat berat dan dapat gagal pada browser iPhone.'],hdr:['Codex HDR Look','Tingkatkan kontras, saturasi, dan gamma video. Ini efek SDR, bukan HDR10 asli.']};
+ const details={hd:['Pulse · Instant','MP4 yang sudah kompatibel bisa langsung diunduh tanpa memuat FFmpeg. File MOV/MKV/WebM tetap perlu proses konversi.'],fps:['Forge · 120 FPS','Interpolasi gerakan eksperimental. Proses berat dan tidak dijamin berhasil pada iPhone.'],hdr:['Nova · HDR Look','Penyesuaian warna SDR melalui encoding, bukan HDR10 asli.']};
  $('modeTitle').textContent=details[mode][0];$('modeDescription').textContent=details[mode][1];
 }));
 $('files').addEventListener('change',()=>{
  const files=[...$('files').files];
- $('fileList').textContent=files.length?files.map(f=>f.name+' ('+(f.size/1048576).toFixed(1)+' MB)').join(' · '):'Belum ada video dipilih.';\n $('videoInfo').hidden=!files.length;if(files.length)inspectVideo(files[0],$('videoInfo'));
+ $('fileList').textContent=files.length?files.map(f=>f.name+' ('+(f.size/1048576).toFixed(1)+' MB)').join(' · '):'Belum ada video dipilih.';
+ $('videoInfo').hidden=!files.length;if(files.length)inspectVideo(files[0],$('videoInfo'));
 });
 function inspectVideo(file,target){
  if(!file){target.textContent='Belum ada video dipilih.';return;}
@@ -78,8 +79,17 @@ $('go').addEventListener('click',async()=>{
  if(chosenMode==='fps'&&!confirm('120 FPS interpolasi gerakan sangat berat dan mungkin tidak didukung oleh FFmpeg browser. Uji video 2–3 detik pada kualitas Ringan dahulu. Lanjutkan?')){lock(false);return;}
  if(chosenQuality>=2560&&!fastMode&&!confirm('Resolusi tinggi di iPhone dapat menyebabkan browser kehabisan memori atau menutup halaman. Lanjutkan?')){lock(false);return;}
  try{
-  const ff=await loadEngine();
+  let ff=null;
   for(let i=0;i<files.length;i++){
+   const original=files[i];
+   if(fastMode && /\.mp4$/i.test(original.name) && (original.type==='video/mp4'||!original.type)){
+    const url=URL.createObjectURL(original);urls.push(url);
+    const a=document.createElement('a');a.href=url;a.download=original.name;a.textContent='⬇ Download MP4 asli · '+original.name;
+    $('downloads').appendChild(a);
+    update(100,'Instant · file siap','File MP4 asli tidak diubah dan tidak di-encode. Resolusi, FPS, dan codec tetap sama. ('+(i+1)+'/'+files.length+')');
+    continue;
+   }
+   if(!ff)ff=await loadEngine();
    if(cancelled)break;
    const file=files[i],input='input_'+i+'.'+(file.name.split('.').pop()||'mp4').replace(/[^a-z0-9]/gi,'').slice(0,6),output='output_'+i+'.mp4';
    update(0,'Menyiapkan video',(i+1)+'/'+files.length+': '+file.name);
@@ -107,8 +117,8 @@ $('go').addEventListener('click',async()=>{
     $('downloads').appendChild(a);
     update(100,'Video selesai','Klik tombol Download di bawah untuk menyimpan hasil. ('+(i+1)+'/'+files.length+')');
    }finally{
-    try{await ff.deleteFile(input)}catch{}
-    try{await ff.deleteFile(output)}catch{}
+    try{if(ff)await ff.deleteFile(input)}catch{}
+    try{if(ff)await ff.deleteFile(output)}catch{}
    }
   }
  }catch(e){if(!cancelled){const message=e?.message||String(e);const memory=/out of bounds|memory|allocation|abort/i.test(message);update($('progress').value,'Proses gagal',memory?'Memori browser tidak cukup untuk video ini. Coba potong video menjadi 3–5 detik, pilih Repack HD, dan gunakan Safari langsung. Detail: '+message:message);if(engine){engine.terminate();engine=null;}}}
