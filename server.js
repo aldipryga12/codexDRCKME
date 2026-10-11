@@ -1,0 +1,36 @@
+import express from 'express';
+import multer from 'multer';
+import crypto from 'crypto';
+import fs from 'fs';
+import os from 'os';
+import {spawn} from 'child_process';
+const app=express();
+const PORT=process.env.PORT||3000;
+const CODES=(process.env.ACCESS_CODES||'').split(',').map(x=>x.trim()).filter(Boolean);
+const sessions=new Map();
+app.use(express.json({limit:'10kb'}));
+app.use(express.static('public'));
+function auth(req,res,next){const token=(req.headers.authorization||'').replace(/^Bearer /,'');if(!sessions.has(token))return res.status(401).json({error:'Sesi tidak valid. Silakan login kembali.'});next();}
+app.get('/api/health',(_,res)=>res.json({ok:true}));
+app.post('/api/login',(req,res)=>{const code=String(req.body?.code||'').trim();if(!code||!CODES.includes(code))return res.status(401).json({error:'Kode akses salah'});const token=crypto.randomBytes(32).toString('hex');sessions.set(token,Date.now());res.json({token});});
+app.get('/api/session',auth,(_,res)=>res.json({active:true}));
+const upload=multer({dest:os.tmpdir(),limits:{fileSize:500*1024*1024}});
+app.post('/api/process',auth,upload.single('video'),(req,res)=>{
+if(!req.file)return res.status(400).json({error:'Pilih video terlebih dahulu'});
+const mode=String(req.body.mode||'hd');
+const filters={
+hd:['-vf','scale=ceil(iw/2)*2:ceil(ih/2)*2,format=yuv420p','-preset','medium','-crf','18'],
+fps:['-vf','minterpolate=fps=120,format=yuv420p','-preset','fast','-crf','20'],
+hdr:['-vf','eq=contrast=1.08:saturation=1.15,scale=ceil(iw/2)*2:ceil(ih/2)*2,format=yuv420p','-preset','medium','-crf','18']
+};
+const input=req.file.path,output=input+'.mp4';
+const cleanup=()=>{fs.rm(input,{force:true},()=>{});fs.rm(output,{force:true},()=>{});};
+if(!filters[mode]){cleanup();return res.status(400).json({error:'Mode tidak valid'});}
+const args=['-hide_banner','-loglevel','error','-y','-i',input,...filters[mode],'-c:v','libx264','-c:a','aac','-b:a','192k','-movflags','+faststart',output];
+const ff=spawn('ffmpeg',args);let err='',finished=false;
+ff.stderr.on('data',d=>{err=(err+d.toString()).slice(-2500)});
+ff.on('error',e=>{if(finished)return;finished=true;cleanup();if(!res.headersSent)res.status(500).json({error:e.message})});
+ff.on('close',code=>{if(finished)return;finished=true;if(code!==0){cleanup();if(!res.headersSent)res.status(500).json({error:err||'Proses gagal'});return;}res.download(output,'codex-repack-'+mode+'.mp4',cleanup)});
+req.on('aborted',()=>{if(!finished)ff.kill('SIGTERM')});
+});
+app.listen(PORT,()=>console.log('Codex Repack on '+PORT));
