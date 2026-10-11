@@ -1,21 +1,15 @@
 import express from 'express';
 import multer from 'multer';
-import crypto from 'crypto';
 import fs from 'fs';
 import os from 'os';
 import {spawn} from 'child_process';
 const app=express();
 const PORT=process.env.PORT||3000;
-const CODES=(process.env.ACCESS_CODES||'').split(',').map(x=>x.trim()).filter(Boolean);
-const sessions=new Map();
 app.use(express.json({limit:'10kb'}));
 app.use(express.static('public'));
-function auth(req,res,next){const token=(req.headers.authorization||'').replace(/^Bearer /,'');if(!sessions.has(token))return res.status(401).json({error:'Sesi tidak valid. Silakan login kembali.'});next();}
 app.get('/api/health',(_,res)=>res.json({ok:true}));
-app.post('/api/login',(req,res)=>{const code=String(req.body?.code||'').trim();if(!code||!CODES.includes(code))return res.status(401).json({error:'Kode akses salah'});const token=crypto.randomBytes(32).toString('hex');sessions.set(token,Date.now());res.json({token});});
-app.get('/api/session',auth,(_,res)=>res.json({active:true}));
 const upload=multer({dest:os.tmpdir(),limits:{fileSize:500*1024*1024}});
-app.post('/api/process',auth,upload.single('video'),(req,res)=>{
+app.post('/api/process',upload.single('video'),(req,res)=>{
 if(!req.file)return res.status(400).json({error:'Pilih video terlebih dahulu'});
 const mode=String(req.body.mode||'hd');
 const filters={
