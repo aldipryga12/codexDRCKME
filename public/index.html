@@ -1,5 +1,37 @@
-<!doctype html><html lang="id"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Codex Repack</title><style>body{font:16px system-ui;background:#0a1123;color:#e9efff;margin:0}main{max-width:800px;margin:50px auto;padding:20px}.card{background:#17233e;border:1px solid #33446c;padding:28px;border-radius:20px;margin:20px 0}h1{font-size:36px}p{color:#b1bfd9}input,button{font:inherit;padding:12px;border-radius:10px}input{background:#0a1123;color:white;border:1px solid #64748b;max-width:100%}button{background:#3984ff;border:0;color:white;cursor:pointer;margin:6px}button:disabled{opacity:.5}.hide{display:none}.modes{display:flex;flex-wrap:wrap}.selected{outline:3px solid #9ec5ff}progress{width:100%}</style><main><h2>CODEX <span style="color:#73b5ff">REPACK</span></h2><section id="studio" class="card"><h1>Proses Video</h1><p>Pilih mode pemrosesan. HDR Look adalah penyesuaian warna, bukan HDR10 asli.</p><div class="modes"><button class="selected" data-mode="hd">Repack HD</button><button data-mode="fps">120 FPS</button><button data-mode="hdr">HDR Look</button></div><p>Upload beberapa video (maksimal 500 MB per file).</p><input id="files" type="file" accept="video/*,.mkv" multiple><p><button id="go">Proses & Download</button></p><progress id="progress" value="0" max="100"></progress><p id="status">Siap.</p></section></main><script>
+<!doctype html><html lang="id"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Codex Repack</title><style>
+*{box-sizing:border-box}body{font:16px system-ui;background:#0a1123;color:#e9efff;margin:0}main{max-width:800px;margin:50px auto;padding:20px}.card{background:#17233e;border:1px solid #33446c;padding:28px;border-radius:20px;margin:20px 0}h1{font-size:clamp(28px,6vw,40px)}p{color:#b1bfd9;line-height:1.5}input,button{font:inherit;padding:12px;border-radius:10px}input{background:#0a1123;color:white;border:1px solid #64748b;max-width:100%}button{background:#3984ff;border:0;color:white;cursor:pointer;margin:6px}button:disabled{opacity:.5}.modes{display:flex;flex-wrap:wrap}.selected{outline:3px solid #9ec5ff}progress{width:100%;height:23px;accent-color:#3984ff}#percent{font-size:28px;font-weight:800;color:#8bbcff;margin:8px 0}#status{overflow-wrap:anywhere}</style>
+<main><h2>CODEX <span style="color:#73b5ff">REPACK</span></h2><section class="card"><h1>Proses Video</h1><p>Pilih mode. 120 FPS menggunakan duplikasi frame untuk menghemat CPU, bukan interpolasi gerakan. HDR Look bukan HDR10 asli.</p><div class="modes"><button class="selected" data-mode="hd">Repack HD</button><button data-mode="fps">120 FPS</button><button data-mode="hdr">HDR Look</button></div><p>Upload video (maksimal 150 MB per file). Pemrosesan dilakukan bergantian.</p><input id="files" type="file" accept="video/*,.mkv" multiple><p><button id="go">Proses & Download</button></p><progress id="progress" value="0" max="100"></progress><div id="percent">0%</div><p id="status" role="status">Siap.</p></section></main>
+<script>
 const $=id=>document.getElementById(id);let mode='hd';
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-mode]').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');mode=b.dataset.mode});
-$('go').onclick=async()=>{const files=[...$('files').files];if(!files.length)return $('status').textContent='Pilih video dulu';$('go').disabled=true;let n=0;for(const f of files){$('status').textContent='Memproses '+f.name+' ('+(n+1)+'/'+files.length+')';try{let fd=new FormData();fd.append('video',f);fd.append('mode',mode);let r=await fetch('/api/process',{method:'POST',body:fd});if(!r.ok){let d=await r.json().catch(()=>({}));throw Error(d.error||'Gagal proses')}let blob=await r.blob(),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=f.name.replace(/\.[^.]+$/,'')+'-'+mode+'.mp4';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000)}catch(e){$('status').textContent='Gagal '+f.name+': '+e.message;break}n++;$('progress').value=n/files.length*100}$('go').disabled=false;if(n===files.length)$('status').textContent='Selesai. '+n+' video diproses.'};
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const setProgress=(v,label)=>{$('progress').value=v;$('percent').textContent=v+'%';$('status').textContent=label};
+$('go').onclick=async()=>{
+ const files=[...$('files').files];if(!files.length)return setProgress(0,'Pilih video terlebih dahulu');
+ $('go').disabled=true;let done=0;
+ for(const file of files){
+  try{
+   setProgress(0,'Mengunggah '+file.name+'...');
+   const fd=new FormData();fd.append('video',file);fd.append('mode',mode);
+   const response=await fetch('/api/jobs',{method:'POST',body:fd});
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok)throw Error(data.error||'Upload gagal');
+   let state='processing';
+   while(state==='processing'){
+    await wait(1500);
+    const r=await fetch('/api/jobs/'+encodeURIComponent(data.id),{cache:'no-store'});
+    const job=await r.json();
+    if(!r.ok)throw Error(job.error||'Status proses tidak tersedia');
+    state=job.state;
+    setProgress(job.percent||0,'Memproses '+file.name+' ('+(done+1)+'/'+files.length+')');
+    if(state==='error')throw Error(job.error||'Pemrosesan gagal');
+   }
+   if(state!=='done')throw Error('Status tidak dikenal');
+   setProgress(100,'Selesai. Mengunduh '+file.name+'...');
+   const link=document.createElement('a');link.href='/api/jobs/'+encodeURIComponent(data.id)+'/download';link.download='codex-repack.mp4';document.body.appendChild(link);link.click();link.remove();
+   done++;
+  }catch(err){$('status').textContent='Gagal: '+err.message;break;}
+ }
+ $('go').disabled=false;if(done===files.length)setProgress(100,'Selesai '+done+' video. Periksa folder download.');
+};
 </script></html>
