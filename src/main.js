@@ -32,13 +32,13 @@ async function loadEngine(){
  }catch(e){ff.terminate();throw new Error('Gagal memuat FFmpeg. Periksa koneksi internet dan dukungan browser. '+(e?.message||String(e)||'Kesalahan tidak diketahui'));}
 }
 function argsFor(currentMode,input,output){
- const common=['-i',input,'-threads','1'];
+ const common=['-threads','1','-i',input];
  const vf={
-  hd:'scale=trunc(min(1280,iw)/2)*2:-2,format=yuv420p',
-  fps:"scale='min(640,iw)':-2,fps=120,format=yuv420p",
-  hdr:'scale=trunc(min(1280,iw)/2)*2:-2,eq=contrast=1.08:saturation=1.15,format=yuv420p'
+  hd:"scale=w='min(640,iw)':h=-2:flags=fast_bilinear,format=yuv420p",
+  fps:"scale=w='min(320,iw)':h=-2:flags=fast_bilinear,fps=120,format=yuv420p",
+  hdr:"scale=w='min(640,iw)':h=-2:flags=fast_bilinear,eq=contrast=1.08:saturation=1.15,format=yuv420p"
  };
- return [...common,'-vf',vf[currentMode],'-c:v','libx264','-preset','ultrafast','-crf','26','-c:a','aac','-b:a','128k','-movflags','+faststart',output];
+ return [...common,'-vf',vf[currentMode],'-c:v','libx264','-preset','ultrafast','-crf','29','-threads','1','-c:a','aac','-b:a','128k','-movflags','+faststart',output];
 }
 $('cancel').addEventListener('click',()=>{
  if(!active)return;cancelled=true;if(engine){engine.terminate();engine=null;}
@@ -77,6 +77,6 @@ $('go').addEventListener('click',async()=>{
     try{await ff.deleteFile(output)}catch{}
    }
   }
- }catch(e){if(!cancelled)update($('progress').value,'Proses gagal',e.message||String(e));}
+ }catch(e){if(!cancelled){const message=e?.message||String(e);const memory=/out of bounds|memory|allocation|abort/i.test(message);update($('progress').value,'Proses gagal',memory?'Memori browser tidak cukup untuk video ini. Coba potong video menjadi 3–5 detik, pilih Repack HD, dan gunakan Safari langsung. Detail: '+message:message);if(engine){engine.terminate();engine=null;}}}
  finally{if(!cancelled)lock(false);}
 });
