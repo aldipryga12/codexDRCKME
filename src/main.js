@@ -1,5 +1,5 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile } from '@ffmpeg/util';
+import { fetchFile, toBlobURL } from '@ffmpeg/util';
 import './style.css';
 const $=id=>document.getElementById(id);
 let mode='hd',engine=null,active=false,cancelled=false,urls=[];
@@ -27,7 +27,7 @@ async function loadEngine(){
   update(pct,'Memproses video','FFmpeg sedang mengonversi video di perangkat ini.');
  });
  try{
-  await ff.load({coreURL:coreBase+'/ffmpeg-core.js',wasmURL:coreBase+'/ffmpeg-core.wasm'});
+  await ff.load({coreURL:await toBlobURL(coreBase+'/ffmpeg-core.js','text/javascript'),wasmURL:await toBlobURL(coreBase+'/ffmpeg-core.wasm','application/wasm')});
   engine=ff;return ff;
  }catch(e){ff.terminate();throw new Error('Gagal memuat FFmpeg. Periksa koneksi internet dan dukungan browser. '+(e?.message||String(e)||'Kesalahan tidak diketahui'));}
 }
