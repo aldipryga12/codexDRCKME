@@ -10,7 +10,9 @@ function update(percent,stage,message){
 }
 function lock(busy){$('quality').disabled=busy;active=busy;$('go').disabled=busy;$('cancel').disabled=!busy;$('files').disabled=busy;document.querySelectorAll('.mode').forEach(b=>b.disabled=busy);}
 document.querySelectorAll('.mode').forEach(b=>b.addEventListener('click',()=>{
- document.querySelectorAll('.mode').forEach(x=>x.classList.remove('active'));b.classList.add('active');mode=b.dataset.mode;\n const details={hd:['Codex Repack HD','Encode video H.264 MP4 langsung di perangkat. Pilih kualitas output sesuai kemampuan perangkatmu.'],fps:['Codex Motion 120 FPS','Interpolasi gerakan eksperimental untuk membuat frame perantara. Sangat berat dan dapat gagal pada browser iPhone.'],hdr:['Codex HDR Look','Tingkatkan kontras, saturasi, dan gamma video. Ini efek SDR, bukan HDR10 asli.']};\n $('modeTitle').textContent=details[mode][0];$('modeDescription').textContent=details[mode][1];
+ document.querySelectorAll('.mode').forEach(x=>x.classList.remove('active'));b.classList.add('active');mode=b.dataset.mode;
+ const details={hd:['Codex Repack HD','Encode video H.264 MP4 langsung di perangkat. Pilih kualitas output sesuai kemampuan perangkatmu.'],fps:['Codex Motion 120 FPS','Interpolasi gerakan eksperimental untuk membuat frame perantara. Sangat berat dan dapat gagal pada browser iPhone.'],hdr:['Codex HDR Look','Tingkatkan kontras, saturasi, dan gamma video. Ini efek SDR, bukan HDR10 asli.']};
+ $('modeTitle').textContent=details[mode][0];$('modeDescription').textContent=details[mode][1];
 }));
 $('files').addEventListener('change',()=>{
  const files=[...$('files').files];
@@ -50,7 +52,8 @@ $('go').addEventListener('click',async()=>{
  cancelled=false;lock(true);
  for(const url of urls)URL.revokeObjectURL(url);urls=[];$('downloads').replaceChildren();
  const chosenMode=mode,chosenQuality=Number($('quality').value);
- if(chosenMode==='fps'&&!confirm('120 FPS interpolasi gerakan sangat berat dan mungkin tidak didukung oleh FFmpeg browser. Uji video 2–3 detik pada kualitas Ringan dahulu. Lanjutkan?')){lock(false);return;}\n if(chosenQuality>=2560&&!confirm('Resolusi tinggi di iPhone dapat menyebabkan browser kehabisan memori atau menutup halaman. Lanjutkan?')){lock(false);return;}
+ if(chosenMode==='fps'&&!confirm('120 FPS interpolasi gerakan sangat berat dan mungkin tidak didukung oleh FFmpeg browser. Uji video 2–3 detik pada kualitas Ringan dahulu. Lanjutkan?')){lock(false);return;}
+ if(chosenQuality>=2560&&!confirm('Resolusi tinggi di iPhone dapat menyebabkan browser kehabisan memori atau menutup halaman. Lanjutkan?')){lock(false);return;}
  try{
   const ff=await loadEngine();
   for(let i=0;i<files.length;i++){
